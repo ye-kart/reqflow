@@ -418,6 +418,115 @@ func TestListCollections_EmptyDir(t *testing.T) {
 	}
 }
 
+func TestRoundTrip_ExampleResponse(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mock-collection.yaml")
+
+	original := domain.Collection{
+		Name: "Mock API",
+		Requests: []domain.SavedRequest{
+			{
+				Name: "Get Users",
+				Config: domain.RequestConfig{
+					Method: domain.MethodGet,
+					URL:    "https://api.example.com/users",
+				},
+				Response: &domain.ExampleResponse{
+					StatusCode: 200,
+					Headers:    []domain.Header{{Key: "Content-Type", Value: "application/json"}},
+					Body:       `[{"id":1}]`,
+				},
+			},
+			{
+				Name: "Health",
+				Config: domain.RequestConfig{
+					Method: domain.MethodGet,
+					URL:    "https://api.example.com/health",
+				},
+				// No response defined.
+			},
+		},
+	}
+
+	fs := storage.NewFilesystem()
+	if err := fs.WriteCollection(path, original); err != nil {
+		t.Fatalf("write error: %v", err)
+	}
+
+	loaded, err := fs.ReadCollection(path)
+	if err != nil {
+		t.Fatalf("read error: %v", err)
+	}
+
+	if len(loaded.Requests) != 2 {
+		t.Fatalf("expected 2 requests, got %d", len(loaded.Requests))
+	}
+
+	// First request should have response.
+	r := loaded.Requests[0]
+	if r.Response == nil {
+		t.Fatal("expected response to be set for first request")
+	}
+	if r.Response.StatusCode != 200 {
+		t.Errorf("status code: expected 200, got %d", r.Response.StatusCode)
+	}
+	if len(r.Response.Headers) != 1 {
+		t.Fatalf("headers: expected 1, got %d", len(r.Response.Headers))
+	}
+	if r.Response.Headers[0].Key != "Content-Type" || r.Response.Headers[0].Value != "application/json" {
+		t.Errorf("unexpected header: %+v", r.Response.Headers[0])
+	}
+	if r.Response.Body != `[{"id":1}]` {
+		t.Errorf("body: expected '[{\"id\":1}]', got %q", r.Response.Body)
+	}
+
+	// Second request should have nil response.
+	if loaded.Requests[1].Response != nil {
+		t.Errorf("expected nil response for second request, got %+v", loaded.Requests[1].Response)
+	}
+}
+
+func TestReadCollection_WithResponseYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mock.yaml")
+
+	content := `name: Mock Test
+requests:
+  - name: Get Users
+    method: GET
+    url: "https://api.example.com/users"
+    response:
+      status_code: 200
+      headers:
+        - key: Content-Type
+          value: application/json
+      body: '[{"id":1}]'
+`
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	fs := storage.NewFilesystem()
+	col, err := fs.ReadCollection(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(col.Requests) != 1 {
+		t.Fatalf("expected 1 request, got %d", len(col.Requests))
+	}
+	r := col.Requests[0]
+	if r.Response == nil {
+		t.Fatal("expected response to be set")
+	}
+	if r.Response.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", r.Response.StatusCode)
+	}
+	if r.Response.Body != `[{"id":1}]` {
+		t.Errorf("expected body '[{\"id\":1}]', got %q", r.Response.Body)
+	}
+}
+
 func TestReadCollection_NonexistentFile(t *testing.T) {
 	fs := storage.NewFilesystem()
 	_, err := fs.ReadCollection("/nonexistent/path/collection.yaml")

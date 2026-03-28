@@ -36,12 +36,20 @@ type folderFile struct {
 
 // savedRequestFile is the YAML-serializable representation of a saved request.
 type savedRequestFile struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description,omitempty"`
-	Method      string `yaml:"method"`
-	URL         string `yaml:"url"`
-	Body        string `yaml:"body,omitempty"`
-	ContentType string `yaml:"content_type,omitempty"`
+	Name        string               `yaml:"name"`
+	Description string               `yaml:"description,omitempty"`
+	Method      string               `yaml:"method"`
+	URL         string               `yaml:"url"`
+	Body        string               `yaml:"body,omitempty"`
+	ContentType string               `yaml:"content_type,omitempty"`
+	Response    *exampleResponseFile `yaml:"response,omitempty"`
+}
+
+// exampleResponseFile is the YAML-serializable representation of an example response.
+type exampleResponseFile struct {
+	StatusCode int          `yaml:"status_code"`
+	Headers    []headerFile `yaml:"headers,omitempty"`
+	Body       string       `yaml:"body,omitempty"`
 }
 
 // headerFile is the YAML-serializable representation of a header.
@@ -217,6 +225,7 @@ func requestsFromFile(rfs []savedRequestFile) []domain.SavedRequest {
 				Body:        body,
 				ContentType: rf.ContentType,
 			},
+			Response: exampleResponseFromFile(rf.Response),
 		}
 	}
 	return requests
@@ -235,9 +244,32 @@ func requestsToFile(requests []domain.SavedRequest) []savedRequestFile {
 			URL:         r.Config.URL,
 			Body:        string(r.Config.Body),
 			ContentType: r.Config.ContentType,
+			Response:    exampleResponseToFile(r.Response),
 		}
 	}
 	return rfs
+}
+
+func exampleResponseFromFile(rf *exampleResponseFile) *domain.ExampleResponse {
+	if rf == nil {
+		return nil
+	}
+	return &domain.ExampleResponse{
+		StatusCode: rf.StatusCode,
+		Headers:    headersFromFile(rf.Headers),
+		Body:       rf.Body,
+	}
+}
+
+func exampleResponseToFile(resp *domain.ExampleResponse) *exampleResponseFile {
+	if resp == nil {
+		return nil
+	}
+	return &exampleResponseFile{
+		StatusCode: resp.StatusCode,
+		Headers:    headersToFile(resp.Headers),
+		Body:       resp.Body,
+	}
 }
 
 func headersFromFile(hfs []headerFile) []domain.Header {
