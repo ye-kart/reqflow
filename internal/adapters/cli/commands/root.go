@@ -111,5 +111,8 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register cookie management subcommand.
 	root.AddCommand(newCookieCommand(a))
 
+	// Register performance/load testing subcommand.
+	root.AddCommand(newPerfCommand(a))
+
 	return root
 }
