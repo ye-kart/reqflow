@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/ye-kart/reqflow/internal/adapters/cli/output"
 	"github.com/ye-kart/reqflow/internal/app"
 	"github.com/ye-kart/reqflow/internal/core/variable"
 	"github.com/ye-kart/reqflow/internal/domain"
@@ -25,6 +26,8 @@ func newCollectionRunCommand(a *app.App) *cobra.Command {
 	cmd.Flags().String("folder", "", "run only requests in the specified folder")
 	cmd.Flags().Duration("delay", 0, "delay between requests (e.g. 1s, 500ms)")
 	cmd.Flags().Bool("no-stop-on-failure", false, "continue executing on failure")
+	cmd.Flags().String("report", "", "test report format (junit)")
+	cmd.Flags().String("report-file", "", "write test report to file instead of stdout")
 
 	return cmd
 }
@@ -81,6 +84,17 @@ func makeCollectionRunE(a *app.App) func(cmd *cobra.Command, args []string) erro
 
 		w := cmd.OutOrStdout()
 		noColor, _ := cmd.Flags().GetBool("no-color")
+
+		// Handle test report export.
+		reportFmt, _ := cmd.Flags().GetString("report")
+		reportFile, _ := cmd.Flags().GetString("report-file")
+		if reportFmt == "junit" {
+			suite := output.CollectionToTestSuite(result)
+			if err := writeJUnitReport(suite, reportFile, w); err != nil {
+				return err
+			}
+		}
+
 		return formatCollectionRunResult(w, result, noColor)
 	}
 }

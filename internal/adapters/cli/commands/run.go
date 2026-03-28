@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/ye-kart/reqflow/internal/adapters/cli/output"
 	"github.com/ye-kart/reqflow/internal/app"
 	"github.com/ye-kart/reqflow/internal/core/datafile"
+	"github.com/ye-kart/reqflow/internal/core/exporter"
 	"github.com/ye-kart/reqflow/internal/core/variable"
 	"github.com/ye-kart/reqflow/internal/core/workflow"
 	"github.com/ye-kart/reqflow/internal/domain"
@@ -28,6 +30,8 @@ func newRunCommand(a *app.App) *cobra.Command {
 	}
 
 	cmd.Flags().String("data", "", "data file for iteration (CSV or JSON)")
+	cmd.Flags().String("report", "", "test report format (junit)")
+	cmd.Flags().String("report-file", "", "write test report to file instead of stdout")
 
 	return cmd
 }
@@ -106,6 +110,16 @@ func makeRunWorkflowE(a *app.App) func(cmd *cobra.Command, args []string) error 
 		result, err := a.Runner.Run(ctx, wf, vars)
 		if err != nil {
 			return fmt.Errorf("running workflow: %w", err)
+		}
+
+		// Handle test report export.
+		reportFmt, _ := cmd.Flags().GetString("report")
+		reportFile, _ := cmd.Flags().GetString("report-file")
+		if reportFmt == "junit" {
+			suite := output.WorkflowToTestSuite(result)
+			if err := writeJUnitReport(suite, reportFile, w); err != nil {
+				return err
+			}
 		}
 
 		// Format output
@@ -410,4 +424,22 @@ func formatDataDrivenPretty(w io.Writer, result domain.DataDrivenResult, noColor
 	fmt.Fprintf(w, " %s(%s)%s\n", dim, result.Duration.Round(time.Millisecond), reset)
 
 	return nil
+}
+
+// writeJUnitReport writes JUnit XML to a file or stdout.
+func writeJUnitReport(suite domain.TestSuiteResult, reportFile string, defaultWriter io.Writer) error {
+	xmlData, err := exporter.ExportJUnit(suite)
+	if err != nil {
+		return fmt.Errorf("exporting JUnit report: %w", err)
+	}
+
+	if reportFile != "" {
+		if err := os.WriteFile(reportFile, xmlData, 0644); err != nil {
+			return fmt.Errorf("writing report file: %w", err)
+		}
+		return nil
+	}
+
+	_, err = defaultWriter.Write(xmlData)
+	return err
 }
