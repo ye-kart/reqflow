@@ -50,11 +50,10 @@ func (cr *CollectionRunner) RunCollection(ctx context.Context, collection domain
 	}
 
 	for i, fr := range requests {
-		select {
-		case <-ctx.Done():
+		// Check for context cancellation before each request.
+		if ctx.Err() != nil {
 			result.Skipped += len(requests) - i
 			break
-		default:
 		}
 
 		// Apply delay between requests (not before the first one).
