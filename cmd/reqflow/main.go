@@ -12,6 +12,8 @@ import (
 	"github.com/ye-kart/reqflow/internal/adapters/storage"
 	"github.com/ye-kart/reqflow/internal/app"
 	"github.com/ye-kart/reqflow/internal/domain"
+	"github.com/ye-kart/reqflow/internal/features/monitor"
+	"github.com/ye-kart/reqflow/internal/features/runner"
 )
 
 func main() {
@@ -40,6 +42,15 @@ func defaultCookiePath() string {
 	return filepath.Join(home, ".reqflow", "cookies.json")
 }
 
+// defaultMonitorDir returns the default directory for monitor config files.
+func defaultMonitorDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".reqflow", "monitors")
+	}
+	return filepath.Join(home, ".reqflow", "monitors")
+}
+
 func run() error {
 	// Create cookie jar and load persisted cookies.
 	jar := cookiejar.New()
@@ -53,6 +64,13 @@ func run() error {
 	// Create the application coordinator.
 	a := app.New(httpClient, store)
 	a.CookieJar = jar
+
+	// Create the monitor scheduler.
+	monitorDir := defaultMonitorDir()
+	r := runner.New(httpClient)
+	sched := monitor.NewScheduler(r, monitorDir)
+	_ = sched.Load() // best-effort load; missing dir is fine
+	a.Scheduler = sched
 
 	// Create and execute the CLI.
 	c := cli.New(a)

@@ -2,6 +2,7 @@ package app
 
 import (
 	featurehttp "github.com/ye-kart/reqflow/internal/features/http"
+	"github.com/ye-kart/reqflow/internal/features/monitor"
 	"github.com/ye-kart/reqflow/internal/features/runner"
 	"github.com/ye-kart/reqflow/internal/ports/driven"
 )
@@ -11,6 +12,7 @@ type App struct {
 	HTTPExecutor     *featurehttp.Executor
 	Runner           *runner.Runner
 	CollectionRunner *runner.CollectionRunner
+	Scheduler        *monitor.Scheduler
 	Storage          driven.Storage
 	CookieJar        driven.CookieJar
 	httpClient       driven.HTTPClient

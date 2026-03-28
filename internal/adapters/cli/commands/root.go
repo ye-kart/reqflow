@@ -114,5 +114,8 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register mock server subcommand.
 	root.AddCommand(newMockCommand(a))
 
+	// Register monitor management subcommand.
+	root.AddCommand(newMonitorCommand(a))
+
 	return root
 }
