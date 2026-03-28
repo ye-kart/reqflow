@@ -117,8 +117,8 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// IsCloseError returns true if the error indicates a WebSocket close
-// (normal closure, going away, or unexpected EOF from server disconnect).
+// IsCloseError returns true if the error indicates a WebSocket connection
+// was closed -- either via a proper close frame or an abrupt server disconnect.
 func IsCloseError(err error) bool {
 	if gorillaWS.IsCloseError(err,
 		gorillaWS.CloseNormalClosure,
@@ -128,11 +128,7 @@ func IsCloseError(err error) bool {
 	) {
 		return true
 	}
-	// gorilla/websocket may also wrap unexpected EOF as a close error with
-	// code 1006; check for that pattern.
-	if gorillaWS.IsUnexpectedCloseError(err) {
-		return false
-	}
-	// If the error string contains "unexpected EOF" it's typically a server disconnect.
+	// When the server drops the TCP connection without a close frame,
+	// gorilla/websocket returns an error containing "unexpected EOF".
 	return strings.Contains(err.Error(), "unexpected EOF")
 }

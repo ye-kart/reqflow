@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/ye-kart/reqflow/internal/app"
@@ -160,13 +159,4 @@ func parseWSHeaders(cmd *cobra.Command) map[string]string {
 		}
 	}
 	return headers
-}
-
-// defaultEnvDir is needed by the ws command to avoid import cycle warnings.
-// It is already defined in request.go but is package-private; we reuse
-// the parseHeader function defined there.
-
-// Ensure the ws subcommand has a reasonable default timeout for listen.
-func init() {
-	_ = time.Second // ensure time is imported
 }
