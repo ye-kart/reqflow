@@ -38,7 +38,9 @@ func TestStore_AddAndList(t *testing.T) {
 	store := history.NewStore(dir, 100)
 
 	e1 := newTestEntry("20260101-120000-001", "https://example.com/api/users", 200)
+	e1.Timestamp = time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	e2 := newTestEntry("20260101-120001-002", "https://example.com/api/posts", 201)
+	e2.Timestamp = time.Date(2026, 1, 1, 12, 1, 0, 0, time.UTC)
 
 	if err := store.Add(e1); err != nil {
 		t.Fatalf("Add(e1): %v", err)
