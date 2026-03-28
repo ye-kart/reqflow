@@ -123,5 +123,8 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register GraphQL subcommand.
 	root.AddCommand(newGraphQLCommand(a))
 
+	// Register gRPC subcommand.
+	root.AddCommand(newGRPCCommand())
+
 	return root
 }
