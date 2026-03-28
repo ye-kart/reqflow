@@ -16,6 +16,7 @@ import (
 	"github.com/ye-kart/reqflow/internal/core/variable"
 	"github.com/ye-kart/reqflow/internal/core/workflow"
 	"github.com/ye-kart/reqflow/internal/domain"
+	"github.com/ye-kart/reqflow/internal/features/history"
 )
 
 // addBodyFlags adds --data and --content-type flags to commands that accept a body.
@@ -78,6 +79,11 @@ func addCookieFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("no-cookies", false, "disable cookie handling for this request")
 }
 
+// addHistoryFlags adds history-related flags to a command.
+func addHistoryFlags(cmd *cobra.Command) {
+	cmd.Flags().Bool("no-history", false, "do not save this request to history")
+}
+
 func newGetCommand(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <url>",
@@ -93,6 +99,7 @@ func newGetCommand(a *app.App) *cobra.Command {
 	addExtractFlag(cmd)
 	addAssertFlag(cmd)
 	addCookieFlags(cmd)
+	addHistoryFlags(cmd)
 	return cmd
 }
 
@@ -112,6 +119,7 @@ func newPostCommand(a *app.App) *cobra.Command {
 	addExtractFlag(cmd)
 	addAssertFlag(cmd)
 	addCookieFlags(cmd)
+	addHistoryFlags(cmd)
 	return cmd
 }
 
@@ -131,6 +139,7 @@ func newPutCommand(a *app.App) *cobra.Command {
 	addExtractFlag(cmd)
 	addAssertFlag(cmd)
 	addCookieFlags(cmd)
+	addHistoryFlags(cmd)
 	return cmd
 }
 
@@ -150,6 +159,7 @@ func newPatchCommand(a *app.App) *cobra.Command {
 	addExtractFlag(cmd)
 	addAssertFlag(cmd)
 	addCookieFlags(cmd)
+	addHistoryFlags(cmd)
 	return cmd
 }
 
@@ -168,6 +178,7 @@ func newDeleteCommand(a *app.App) *cobra.Command {
 	addExtractFlag(cmd)
 	addAssertFlag(cmd)
 	addCookieFlags(cmd)
+	addHistoryFlags(cmd)
 	return cmd
 }
 
@@ -317,6 +328,23 @@ func makeRunE(a *app.App, method domain.HTTPMethod, hasBody bool) func(cmd *cobr
 		}
 		if err != nil {
 			return fmt.Errorf("request failed: %w", err)
+		}
+
+		// Save to history unless --no-history is set.
+		noHistory, _ := cmd.Flags().GetBool("no-history")
+		if !noHistory && a.HistoryStore != nil {
+			entry := history.Entry{
+				ID:        history.GenerateID(),
+				Timestamp: time.Now(),
+				Method:    string(method),
+				URL:       url,
+				Status:    result.Response.StatusCode,
+				Duration:  result.Response.Duration,
+				Request:   result.Request,
+				Response:  result.Response,
+			}
+			// Best-effort: don't fail the command if history saving fails.
+			_ = a.HistoryStore.Add(entry)
 		}
 
 		// Check for --extract and --assert flags.

@@ -12,6 +12,7 @@ import (
 	"github.com/ye-kart/reqflow/internal/adapters/storage"
 	"github.com/ye-kart/reqflow/internal/app"
 	"github.com/ye-kart/reqflow/internal/domain"
+	"github.com/ye-kart/reqflow/internal/features/history"
 	"github.com/ye-kart/reqflow/internal/features/monitor"
 	"github.com/ye-kart/reqflow/internal/features/runner"
 )
@@ -51,6 +52,15 @@ func defaultMonitorDir() string {
 	return filepath.Join(home, ".reqflow", "monitors")
 }
 
+// defaultHistoryDir returns the default directory for history storage.
+func defaultHistoryDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".reqflow", "history")
+	}
+	return filepath.Join(home, ".reqflow", "history")
+}
+
 func run() error {
 	// Create cookie jar and load persisted cookies.
 	jar := cookiejar.New()
@@ -71,6 +81,9 @@ func run() error {
 	sched := monitor.NewScheduler(r, monitorDir)
 	_ = sched.Load() // best-effort load; missing dir is fine
 	a.Scheduler = sched
+
+	// Create the history store.
+	a.HistoryStore = history.NewStore(defaultHistoryDir(), 100)
 
 	// Create and execute the CLI.
 	c := cli.New(a)
