@@ -120,5 +120,8 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register WebSocket subcommand.
 	root.AddCommand(newWSCommand(a))
 
+	// Register GraphQL subcommand.
+	root.AddCommand(newGraphQLCommand(a))
+
 	return root
 }
