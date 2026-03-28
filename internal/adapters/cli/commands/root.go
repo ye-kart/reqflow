@@ -32,5 +32,8 @@ func NewRootCommand(a *app.App) *cobra.Command {
 	root.AddCommand(newPatchCommand(a))
 	root.AddCommand(newDeleteCommand(a))
 
+	// Shell completion.
+	root.AddCommand(newCompletionCommand())
+
 	return root
 }
