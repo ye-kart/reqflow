@@ -284,15 +284,3 @@ func TestRunWithData_FailedIterationCountsCorrectly(t *testing.T) {
 	}
 }
 
-// capturingHTTPClient captures request details for assertions.
-type capturingHTTPClient struct {
-	response domain.HTTPResponse
-	onDo     func(domain.HTTPRequest)
-}
-
-func (c *capturingHTTPClient) Do(_ context.Context, req domain.HTTPRequest) (domain.HTTPResponse, error) {
-	if c.onDo != nil {
-		c.onDo(req)
-	}
-	return c.response, nil
-}

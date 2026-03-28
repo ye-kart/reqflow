@@ -648,9 +648,15 @@ func TestCollectionRunner_AdditionalVars_Override(t *testing.T) {
 type capturingHTTPClient struct {
 	response domain.HTTPResponse
 	captured *[]domain.HTTPRequest
+	onDo     func(domain.HTTPRequest)
 }
 
 func (c *capturingHTTPClient) Do(_ context.Context, req domain.HTTPRequest) (domain.HTTPResponse, error) {
-	*c.captured = append(*c.captured, req)
+	if c.captured != nil {
+		*c.captured = append(*c.captured, req)
+	}
+	if c.onDo != nil {
+		c.onDo(req)
+	}
 	return c.response, nil
 }
