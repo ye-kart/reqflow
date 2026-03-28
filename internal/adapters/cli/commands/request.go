@@ -93,6 +93,7 @@ func newGetCommand(a *app.App) *cobra.Command {
 	}
 	addAuthFlags(cmd)
 	addCurlFlag(cmd)
+	addCodegenFlag(cmd)
 	addFailOnErrorFlag(cmd)
 	addPollFlags(cmd)
 	addRetryFlags(cmd)
@@ -113,6 +114,7 @@ func newPostCommand(a *app.App) *cobra.Command {
 	addBodyFlags(cmd)
 	addAuthFlags(cmd)
 	addCurlFlag(cmd)
+	addCodegenFlag(cmd)
 	addFailOnErrorFlag(cmd)
 	addPollFlags(cmd)
 	addRetryFlags(cmd)
@@ -133,6 +135,7 @@ func newPutCommand(a *app.App) *cobra.Command {
 	addBodyFlags(cmd)
 	addAuthFlags(cmd)
 	addCurlFlag(cmd)
+	addCodegenFlag(cmd)
 	addFailOnErrorFlag(cmd)
 	addPollFlags(cmd)
 	addRetryFlags(cmd)
@@ -153,6 +156,7 @@ func newPatchCommand(a *app.App) *cobra.Command {
 	addBodyFlags(cmd)
 	addAuthFlags(cmd)
 	addCurlFlag(cmd)
+	addCodegenFlag(cmd)
 	addFailOnErrorFlag(cmd)
 	addPollFlags(cmd)
 	addRetryFlags(cmd)
@@ -172,6 +176,7 @@ func newDeleteCommand(a *app.App) *cobra.Command {
 	}
 	addAuthFlags(cmd)
 	addCurlFlag(cmd)
+	addCodegenFlag(cmd)
 	addFailOnErrorFlag(cmd)
 	addPollFlags(cmd)
 	addRetryFlags(cmd)
@@ -268,6 +273,12 @@ func makeRunE(a *app.App, method domain.HTTPMethod, hasBody bool) func(cmd *cobr
 		curlExport, _ := cmd.Flags().GetBool("curl")
 		if curlExport {
 			return printCurlExport(cmd, config)
+		}
+
+		// If --codegen flag is set, generate code and return.
+		codegenLang, _ := cmd.Flags().GetString("codegen")
+		if codegenLang != "" {
+			return printCodegen(cmd, codegenLang, config)
 		}
 
 		// Load environment variables if -e flag is set.

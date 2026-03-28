@@ -144,6 +144,9 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register documentation generation subcommand.
 	root.AddCommand(newDocCommand(a))
 
+	// Register code generation subcommand.
+	root.AddCommand(newCodegenCommand(a))
+
 	// Register interactive TUI subcommand.
 	root.AddCommand(newTUICommand(a))
 
