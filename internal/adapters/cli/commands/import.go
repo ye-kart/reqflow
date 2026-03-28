@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/ye-kart/reqflow/internal/adapters/cli/output"
@@ -19,6 +20,7 @@ func newImportCommand(a *app.App) *cobra.Command {
 	}
 
 	cmd.AddCommand(newImportCurlCommand(a))
+	cmd.AddCommand(newImportFileCommand(a))
 	return cmd
 }
 
@@ -71,6 +73,72 @@ func makeImportCurlRunE(a *app.App) func(cmd *cobra.Command, args []string) erro
 	}
 }
 
+func newImportFileCommand(a *app.App) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "file <path>",
+		Short: "Import a collection from a file (auto-detects format)",
+		Long:  "Import requests from a Postman, OpenAPI, HAR, Insomnia, or cURL file.",
+		Args:  cobra.ExactArgs(1),
+		RunE:  makeImportFileRunE(a),
+	}
+
+	cmd.Flags().String("format", "", "explicitly set format (postman, openapi, har, insomnia, curl)")
+	cmd.Flags().String("save", "", "save imported collection with given name")
+	cmd.Flags().String("collection-dir", defaultCollectionDir(), "directory for saving collections")
+	return cmd
+}
+
+func makeImportFileRunE(a *app.App) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		filePath := args[0]
+
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("reading file: %w", err)
+		}
+
+		format, _ := cmd.Flags().GetString("format")
+
+		var col domain.Collection
+		if format != "" {
+			col, err = importer.ImportWithFormat(data, format)
+		} else {
+			col, err = importer.Import(data)
+		}
+		if err != nil {
+			return fmt.Errorf("import failed: %w", err)
+		}
+
+		// Print summary.
+		w := cmd.OutOrStdout()
+		totalRequests := countRequests(col)
+		totalFolders := countFolders(col)
+
+		fmt.Fprintf(w, "Imported: %s\n", col.Name)
+		fmt.Fprintf(w, "  %d request(s)", totalRequests)
+		if totalFolders > 0 {
+			fmt.Fprintf(w, ", %d folder(s)", totalFolders)
+		}
+		fmt.Fprintln(w)
+
+		// Optionally save as a reqflow collection.
+		saveName, _ := cmd.Flags().GetString("save")
+		if saveName != "" {
+			colDir, _ := cmd.Flags().GetString("collection-dir")
+			if err := os.MkdirAll(colDir, 0755); err != nil {
+				return fmt.Errorf("creating collection dir: %w", err)
+			}
+			colPath := filepath.Join(colDir, saveName+".yaml")
+			if err := a.Storage.WriteCollection(colPath, col); err != nil {
+				return fmt.Errorf("saving collection: %w", err)
+			}
+			fmt.Fprintf(w, "Saved as collection %q\n", saveName)
+		}
+
+		return nil
+	}
+}
+
 func printDryRun(cmd *cobra.Command, config domain.RequestConfig) error {
 	w := cmd.OutOrStdout()
 	fmt.Fprintf(w, "Method:  %s\n", config.Method)
@@ -88,4 +156,36 @@ func printDryRun(cmd *cobra.Command, config domain.RequestConfig) error {
 		fmt.Fprintf(w, "Auth:    %s\n", config.Auth.Type)
 	}
 	return nil
+}
+
+func countRequests(col domain.Collection) int {
+	n := len(col.Requests)
+	for _, f := range col.Folders {
+		n += countFolderRequests(f)
+	}
+	return n
+}
+
+func countFolderRequests(f domain.Folder) int {
+	n := len(f.Requests)
+	for _, sub := range f.Folders {
+		n += countFolderRequests(sub)
+	}
+	return n
+}
+
+func countFolders(col domain.Collection) int {
+	n := len(col.Folders)
+	for _, f := range col.Folders {
+		n += countSubFolders(f)
+	}
+	return n
+}
+
+func countSubFolders(f domain.Folder) int {
+	n := len(f.Folders)
+	for _, sub := range f.Folders {
+		n += countSubFolders(sub)
+	}
+	return n
 }
