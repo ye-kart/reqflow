@@ -117,5 +117,8 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register monitor management subcommand.
 	root.AddCommand(newMonitorCommand(a))
 
+	// Register WebSocket subcommand.
+	root.AddCommand(newWSCommand(a))
+
 	return root
 }
