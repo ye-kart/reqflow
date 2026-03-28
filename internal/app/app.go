@@ -2,6 +2,7 @@ package app
 
 import (
 	featurehttp "github.com/ye-kart/reqflow/internal/features/http"
+	"github.com/ye-kart/reqflow/internal/features/loadtest"
 	"github.com/ye-kart/reqflow/internal/features/monitor"
 	"github.com/ye-kart/reqflow/internal/features/runner"
 	"github.com/ye-kart/reqflow/internal/ports/driven"
@@ -13,6 +14,7 @@ type App struct {
 	Runner           *runner.Runner
 	CollectionRunner *runner.CollectionRunner
 	Scheduler        *monitor.Scheduler
+	LoadTestEngine   *loadtest.Engine
 	Storage          driven.Storage
 	CookieJar        driven.CookieJar
 	httpClient       driven.HTTPClient
@@ -24,6 +26,7 @@ func New(httpClient driven.HTTPClient, storage driven.Storage) *App {
 		HTTPExecutor:     featurehttp.NewExecutor(httpClient),
 		Runner:           runner.New(httpClient),
 		CollectionRunner: runner.NewCollectionRunner(httpClient),
+		LoadTestEngine:   loadtest.NewEngine(httpClient),
 		Storage:          storage,
 		httpClient:       httpClient,
 	}

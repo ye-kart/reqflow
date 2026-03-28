@@ -126,5 +126,8 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register gRPC subcommand.
 	root.AddCommand(newGRPCCommand())
 
+	// Register performance/load testing subcommand.
+	root.AddCommand(newPerfCommand(a))
+
 	return root
 }
