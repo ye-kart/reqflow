@@ -8,20 +8,22 @@ import (
 
 // App is the main application coordinator that holds all feature executors.
 type App struct {
-	HTTPExecutor *featurehttp.Executor
-	Runner       *runner.Runner
-	Storage      driven.Storage
-	CookieJar    driven.CookieJar
-	httpClient   driven.HTTPClient
+	HTTPExecutor     *featurehttp.Executor
+	Runner           *runner.Runner
+	CollectionRunner *runner.CollectionRunner
+	Storage          driven.Storage
+	CookieJar        driven.CookieJar
+	httpClient       driven.HTTPClient
 }
 
 // New creates a new App wired with the given adapters.
 func New(httpClient driven.HTTPClient, storage driven.Storage) *App {
 	return &App{
-		HTTPExecutor: featurehttp.NewExecutor(httpClient),
-		Runner:       runner.New(httpClient),
-		Storage:      storage,
-		httpClient:   httpClient,
+		HTTPExecutor:     featurehttp.NewExecutor(httpClient),
+		Runner:           runner.New(httpClient),
+		CollectionRunner: runner.NewCollectionRunner(httpClient),
+		Storage:          storage,
+		httpClient:       httpClient,
 	}
 }
 

@@ -32,6 +32,7 @@ func newCollectionCommand(a *app.App) *cobra.Command {
 	cmd.AddCommand(newCollectionShowCommand(a))
 	cmd.AddCommand(newCollectionCreateCommand(a))
 	cmd.AddCommand(newCollectionAddCommand(a))
+	cmd.AddCommand(newCollectionRunCommand(a))
 
 	return cmd
 }
