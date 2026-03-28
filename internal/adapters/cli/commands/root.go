@@ -138,6 +138,9 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register performance/load testing subcommand.
 	root.AddCommand(newPerfCommand(a))
 
+	// Register history subcommand.
+	root.AddCommand(newHistoryCommand(a))
+
 	// Register documentation generation subcommand.
 	root.AddCommand(newDocCommand(a))
 
