@@ -11,6 +11,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// filePluginConfig is the YAML-serializable representation of plugin config.
+type filePluginConfig struct {
+	Dir     *string  `yaml:"dir,omitempty"`
+	Enabled []string `yaml:"enabled,omitempty"`
+}
+
 // fileConfig is the YAML-serializable representation of a config file.
 // Pointer fields allow distinguishing "not set" from zero values.
 type fileConfig struct {
@@ -18,6 +24,7 @@ type fileConfig struct {
 	DefaultTimeout *string           `yaml:"default_timeout,omitempty"`
 	NoColor        *bool             `yaml:"no_color,omitempty"`
 	DefaultHeaders map[string]string `yaml:"default_headers,omitempty"`
+	Plugins        *filePluginConfig `yaml:"plugins,omitempty"`
 }
 
 // loadOptions configures where Load looks for config files.
@@ -213,6 +220,14 @@ func applyFileConfig(cfg *domain.AppConfig, fc *fileConfig) {
 		cfg.DefaultHeaders = make([]domain.Header, 0, len(headerMap))
 		for k, v := range headerMap {
 			cfg.DefaultHeaders = append(cfg.DefaultHeaders, domain.Header{Key: k, Value: v})
+		}
+	}
+	if fc.Plugins != nil {
+		if fc.Plugins.Dir != nil {
+			cfg.Plugins.Dir = *fc.Plugins.Dir
+		}
+		if fc.Plugins.Enabled != nil {
+			cfg.Plugins.Enabled = fc.Plugins.Enabled
 		}
 	}
 }

@@ -12,6 +12,12 @@ const (
 	OutputMinimal OutputFormat = "minimal"
 )
 
+// PluginConfig holds configuration for the plugin system.
+type PluginConfig struct {
+	Dir     string   // directory to scan for .so plugin files
+	Enabled []string // list of enabled plugin names
+}
+
 // AppConfig holds global application configuration.
 type AppConfig struct {
 	Timeout        time.Duration
@@ -20,4 +26,5 @@ type AppConfig struct {
 	NoColor        bool
 	Output         OutputFormat
 	DefaultHeaders []Header
+	Plugins        PluginConfig
 }
