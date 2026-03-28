@@ -89,4 +89,6 @@ type RequestConfig struct {
 	Auth        *AuthConfig
 	Timeout     time.Duration
 	NoCookies   bool
+	PreScript   string // JavaScript to run before the request
+	PostScript  string // JavaScript to run after the response
 }
