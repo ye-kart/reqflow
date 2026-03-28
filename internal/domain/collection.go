@@ -25,9 +25,17 @@ type Folder struct {
 	Headers     []Header
 }
 
+// ExampleResponse represents a canned response to return from a mock server.
+type ExampleResponse struct {
+	StatusCode int
+	Headers    []Header
+	Body       string
+}
+
 // SavedRequest represents a named HTTP request stored in a collection.
 type SavedRequest struct {
 	Name        string
 	Description string
 	Config      RequestConfig
+	Response    *ExampleResponse
 }
