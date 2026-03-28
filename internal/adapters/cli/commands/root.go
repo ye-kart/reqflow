@@ -144,6 +144,9 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 	// Register interactive TUI subcommand.
 	root.AddCommand(newTUICommand(a))
 
+	// Register plugin management subcommand.
+	root.AddCommand(newPluginCommand())
+
 	// --interactive flag as alias for `tui` subcommand.
 	root.PersistentFlags().Bool("interactive", false, "launch interactive TUI mode")
 

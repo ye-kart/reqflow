@@ -53,6 +53,12 @@ func ListRegistered() []PluginInfo {
 	return infos
 }
 
+// ResetForTesting clears plugin info. Exported for use by other
+// packages in tests; not intended for production use.
+func ResetForTesting() {
+	resetPluginRegistry()
+}
+
 // resetPluginRegistry clears plugin info (for testing).
 func resetPluginRegistry() {
 	mu.Lock()
