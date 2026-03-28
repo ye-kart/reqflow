@@ -90,6 +90,12 @@ func ListFormatters() []string {
 	return names
 }
 
+// ResetForTesting clears all registrations. Exported for use by other
+// packages in tests; not intended for production use.
+func ResetForTesting() {
+	resetRegistry()
+}
+
 // resetRegistry clears all registrations (for testing).
 func resetRegistry() {
 	mu.Lock()
