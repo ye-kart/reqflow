@@ -11,6 +11,7 @@ import (
 
 	cronpkg "github.com/ye-kart/reqflow/internal/core/monitor"
 	"github.com/ye-kart/reqflow/internal/core/workflow"
+	"github.com/ye-kart/reqflow/internal/domain"
 	"github.com/ye-kart/reqflow/internal/features/runner"
 	"gopkg.in/yaml.v3"
 )
@@ -157,6 +158,44 @@ func (s *Scheduler) RunOnce(ctx context.Context, name string, envVars map[string
 	}
 
 	return s.executeMonitor(ctx, m, envVars)
+}
+
+// RunOnceWithResult executes the named monitor's workflow once and returns the result.
+func (s *Scheduler) RunOnceWithResult(ctx context.Context, name string, envVars map[string]string) (domain.WorkflowResult, error) {
+	s.mu.RLock()
+	m, exists := s.monitors[name]
+	s.mu.RUnlock()
+
+	if !exists {
+		return domain.WorkflowResult{}, fmt.Errorf("monitor %q not found", name)
+	}
+
+	data, err := os.ReadFile(m.WorkflowPath)
+	if err != nil {
+		return domain.WorkflowResult{}, fmt.Errorf("reading workflow file: %w", err)
+	}
+
+	wf, err := workflow.Parse(data)
+	if err != nil {
+		return domain.WorkflowResult{}, fmt.Errorf("parsing workflow: %w", err)
+	}
+
+	vars := make(map[string]string)
+	for k, v := range envVars {
+		vars[k] = v
+	}
+
+	result, err := s.runner.Run(ctx, wf, vars)
+	if err != nil {
+		s.notifyFailure(m, fmt.Sprintf("workflow execution error: %v", err))
+		return domain.WorkflowResult{}, err
+	}
+
+	if result.TotalFailed > 0 {
+		s.notifyFailure(m, fmt.Sprintf("%d assertions failed", result.TotalFailed))
+	}
+
+	return result, nil
 }
 
 // Start runs the scheduler loop, checking for due monitors every 30 seconds.
