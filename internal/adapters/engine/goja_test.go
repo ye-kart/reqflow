@@ -525,6 +525,112 @@ func TestPmRequestHeaders_ReturnsHeaders(t *testing.T) {
 	}
 }
 
+func TestPmExpectToHaveJsonSchema_PassingValidation(t *testing.T) {
+	eng := newEngine()
+	ctx := driven.ScriptContext{
+		Variables: map[string]string{},
+		Request:   domain.RequestConfig{},
+		Response: &domain.HTTPResponse{
+			StatusCode: 200,
+			Body:       []byte(`{"name":"John","age":30}`),
+		},
+	}
+
+	result, err := eng.Execute(`
+		pm.test("matches schema", function() {
+			pm.expect(pm.response.json()).to.have.jsonSchema({
+				type: "object",
+				properties: {
+					name: { type: "string" },
+					age: { type: "integer" }
+				},
+				required: ["name", "age"]
+			});
+		});
+	`, ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.TestResults) != 1 {
+		t.Fatalf("expected 1 test result, got %d", len(result.TestResults))
+	}
+	if !result.TestResults[0].Passed {
+		t.Errorf("expected test to pass, got error: %s", result.TestResults[0].Error)
+	}
+}
+
+func TestPmExpectToHaveJsonSchema_FailingValidation(t *testing.T) {
+	eng := newEngine()
+	ctx := driven.ScriptContext{
+		Variables: map[string]string{},
+		Request:   domain.RequestConfig{},
+		Response: &domain.HTTPResponse{
+			StatusCode: 200,
+			Body:       []byte(`{"name":42}`),
+		},
+	}
+
+	result, err := eng.Execute(`
+		pm.test("schema fails", function() {
+			pm.expect(pm.response.json()).to.have.jsonSchema({
+				type: "object",
+				properties: {
+					name: { type: "string" }
+				}
+			});
+		});
+	`, ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.TestResults) != 1 {
+		t.Fatalf("expected 1 test result, got %d", len(result.TestResults))
+	}
+	if result.TestResults[0].Passed {
+		t.Error("expected test to fail for wrong type")
+	}
+	if result.TestResults[0].Error == "" {
+		t.Error("expected error message")
+	}
+}
+
+func TestPmExpectToHaveJsonSchema_MissingRequired(t *testing.T) {
+	eng := newEngine()
+	ctx := driven.ScriptContext{
+		Variables: map[string]string{},
+		Request:   domain.RequestConfig{},
+		Response: &domain.HTTPResponse{
+			StatusCode: 200,
+			Body:       []byte(`{"name":"John"}`),
+		},
+	}
+
+	result, err := eng.Execute(`
+		pm.test("missing required", function() {
+			pm.expect(pm.response.json()).to.have.jsonSchema({
+				type: "object",
+				properties: {
+					name: { type: "string" },
+					age: { type: "integer" }
+				},
+				required: ["name", "age"]
+			});
+		});
+	`, ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.TestResults) != 1 {
+		t.Fatalf("expected 1 test result, got %d", len(result.TestResults))
+	}
+	if result.TestResults[0].Passed {
+		t.Error("expected test to fail for missing required field")
+	}
+	if !strings.Contains(result.TestResults[0].Error, "age") {
+		t.Errorf("expected error to mention 'age', got: %s", result.TestResults[0].Error)
+	}
+}
+
 func TestPreRequestScript_ModifiesRequest(t *testing.T) {
 	eng := newEngine()
 	ctx := driven.ScriptContext{

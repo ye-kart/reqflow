@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dop251/goja"
+	"github.com/ye-kart/reqflow/internal/core/validation"
 	"github.com/ye-kart/reqflow/internal/domain"
 	"github.com/ye-kart/reqflow/internal/ports/driven"
 )
@@ -198,10 +199,11 @@ func buildExpectation(vm *goja.Runtime, actual interface{}) goja.Value {
 	_ = be.Set("below", makeBelowFunc(vm, actual))
 	_ = to.Set("be", be)
 
-	// .to.have is an object with property/status
+	// .to.have is an object with property/status/jsonSchema
 	have := vm.NewObject()
 	_ = have.Set("property", makePropertyFunc(vm, actual))
 	_ = have.Set("status", makeStatusFunc(vm, actual))
+	_ = have.Set("jsonSchema", makeJsonSchemaFunc(vm, actual))
 	_ = to.Set("have", have)
 
 	_ = obj.Set("to", to)
@@ -343,6 +345,34 @@ func exportHeaders(vm *goja.Runtime, val goja.Value) []domain.Header {
 		}
 	}
 	return headers
+}
+
+func makeJsonSchemaFunc(vm *goja.Runtime, actual interface{}) func(goja.FunctionCall) goja.Value {
+	return func(call goja.FunctionCall) goja.Value {
+		schemaObj := call.Argument(0).Export()
+
+		// Marshal actual data to JSON.
+		dataBytes, err := json.Marshal(actual)
+		if err != nil {
+			panic(vm.NewGoError(fmt.Errorf("failed to marshal data for schema validation: %w", err)))
+		}
+
+		// Marshal schema object to JSON.
+		schemaBytes, err := json.Marshal(schemaObj)
+		if err != nil {
+			panic(vm.NewGoError(fmt.Errorf("failed to marshal schema: %w", err)))
+		}
+
+		valid, errs, err := validation.ValidateJSONSchema(dataBytes, schemaBytes)
+		if err != nil {
+			panic(vm.NewGoError(fmt.Errorf("schema validation error: %w", err)))
+		}
+		if !valid {
+			panic(vm.NewGoError(fmt.Errorf("JSON Schema validation failed: %s", strings.Join(errs, "; "))))
+		}
+
+		return goja.Undefined()
+	}
 }
 
 func headersEqual(a []domain.Header, b []domain.Header) bool {
