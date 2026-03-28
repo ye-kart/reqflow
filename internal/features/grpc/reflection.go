@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/jhump/protoreflect/grpcreflect"
-	"google.golang.org/grpc"
 )
 
 // ListServices uses gRPC server reflection to list available services.
@@ -68,6 +67,3 @@ func (c *Caller) DescribeService(ctx context.Context, address, serviceName strin
 
 	return info, nil
 }
-
-// Ensure we use the grpc package (for dial function).
-var _ = grpc.NewClient
