@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/ye-kart/reqflow/internal/app"
+	"github.com/ye-kart/reqflow/internal/core/variable"
 	"github.com/ye-kart/reqflow/internal/domain"
 )
 
@@ -47,11 +48,26 @@ func makeCollectionRunE(a *app.App) func(cmd *cobra.Command, args []string) erro
 		delay, _ := cmd.Flags().GetDuration("delay")
 		noStopOnFailure, _ := cmd.Flags().GetBool("no-stop-on-failure")
 
+		// Load environment variables if specified.
+		vars := make(map[string]string)
+		envName, _ := cmd.Flags().GetString("env")
+		if envName != "" && a.Storage != nil {
+			envDir, _ := cmd.Flags().GetString("env-dir")
+			envPath := filepath.Join(envDir, envName+".yaml")
+			env, err := a.Storage.ReadEnvironment(envPath)
+			if err != nil {
+				return fmt.Errorf("loading environment %q: %w", envName, err)
+			}
+			vars = variable.Resolve(env.Variables)
+		}
+
 		opts := domain.CollectionRunOptions{
 			Sequential:    true,
 			StopOnFailure: !noStopOnFailure,
 			FolderName:    folder,
 			Delay:         delay,
+			Environment:   envName,
+			Vars:          vars,
 		}
 
 		timeout, _ := cmd.Flags().GetDuration("timeout")
