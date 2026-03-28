@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/ye-kart/reqflow/internal/adapters/tui"
 	"github.com/ye-kart/reqflow/internal/app"
 	"github.com/ye-kart/reqflow/internal/platform/config"
 )
@@ -42,6 +43,14 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 		Long:  "reqflow is a CLI tool for sending HTTP requests with variable substitution, authentication, and environment management.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			interactive, _ := cmd.Flags().GetBool("interactive")
+			if interactive {
+				tuiApp := tui.New(a.HTTPClient(), a.Storage)
+				return tuiApp.Run()
+			}
+			return cmd.Help()
+		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.Load(o.configOpts...)
 			if err != nil {
@@ -110,6 +119,12 @@ func NewRootCommand(a *app.App, opts ...RootOption) *cobra.Command {
 
 	// Register cookie management subcommand.
 	root.AddCommand(newCookieCommand(a))
+
+	// Register interactive TUI subcommand.
+	root.AddCommand(newTUICommand(a))
+
+	// --interactive flag as alias for `tui` subcommand.
+	root.PersistentFlags().Bool("interactive", false, "launch interactive TUI mode")
 
 	return root
 }
