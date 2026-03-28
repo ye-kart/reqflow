@@ -67,11 +67,54 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyTab:
+			// When on Request tab, delegate Tab to form navigation.
+			// Otherwise, switch tabs.
+			if m.activeTab == tabRequest {
+				newReq, cmd := m.request.Update(msg)
+				m.request = newReq.(RequestModel)
+				return m, cmd
+			}
 			m.activeTab = (m.activeTab + 1) % tabCount
 			return m, nil
 		case tea.KeyShiftTab:
+			if m.activeTab == tabRequest {
+				newReq, cmd := m.request.Update(msg)
+				m.request = newReq.(RequestModel)
+				return m, cmd
+			}
 			m.activeTab = (m.activeTab - 1 + tabCount) % tabCount
 			return m, nil
+		case tea.KeyRight:
+			if msg.Alt {
+				m.activeTab = (m.activeTab + 1) % tabCount
+				return m, nil
+			}
+		case tea.KeyLeft:
+			if msg.Alt {
+				m.activeTab = (m.activeTab - 1 + tabCount) % tabCount
+				return m, nil
+			}
+		}
+
+		// Also handle number keys for quick tab switching.
+		if msg.Type == tea.KeyRunes && len(msg.Runes) == 1 {
+			switch msg.Runes[0] {
+			case '1':
+				if m.activeTab != tabRequest {
+					m.activeTab = tabRequest
+					return m, nil
+				}
+			case '2':
+				if m.activeTab != tabResponse {
+					m.activeTab = tabResponse
+					return m, nil
+				}
+			case '3':
+				if m.activeTab != tabHistory {
+					m.activeTab = tabHistory
+					return m, nil
+				}
+			}
 		}
 
 		// Delegate to active tab's update only for the request tab.
@@ -177,6 +220,6 @@ func (m MainModel) renderHistory() string {
 
 // renderStatusBar renders the bottom status bar with key hints.
 func (m MainModel) renderStatusBar() string {
-	hints := "Tab: switch tabs • Enter: send • Ctrl+C: quit"
+	hints := "Tab: navigate • 1/2/3: switch tabs • Enter: send • Ctrl+C: quit"
 	return styles.StatusBar().Render(hints)
 }

@@ -40,7 +40,7 @@ func TestMainModelInitReturnsNil(t *testing.T) {
 	}
 }
 
-func TestTabSwitchingWithTab(t *testing.T) {
+func TestTabSwitchingWithNumberKeys(t *testing.T) {
 	m := NewMainModel(nil)
 
 	// Start on Request tab (0)
@@ -48,36 +48,72 @@ func TestTabSwitchingWithTab(t *testing.T) {
 		t.Fatalf("expected initial tab Request, got %d", m.activeTab)
 	}
 
-	// Press Tab to go to Response
-	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	// Press '2' to go to Response
+	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
 	m = newModel.(MainModel)
 	if m.activeTab != tabResponse {
-		t.Errorf("expected Response tab after Tab, got %d", m.activeTab)
+		t.Errorf("expected Response tab after '2', got %d", m.activeTab)
 	}
 
-	// Press Tab again to go to History
-	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	// Press '3' to go to History
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
 	m = newModel.(MainModel)
 	if m.activeTab != tabHistory {
-		t.Errorf("expected History tab after second Tab, got %d", m.activeTab)
+		t.Errorf("expected History tab after '3', got %d", m.activeTab)
 	}
 
-	// Press Tab again to wrap around to Request
-	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	// Press '1' to go to Request
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
 	m = newModel.(MainModel)
 	if m.activeTab != tabRequest {
-		t.Errorf("expected Request tab after wrap, got %d", m.activeTab)
+		t.Errorf("expected Request tab after '1', got %d", m.activeTab)
 	}
 }
 
-func TestShiftTabSwitchesBackward(t *testing.T) {
+func TestTabSwitchingWithTabFromNonRequestTab(t *testing.T) {
 	m := NewMainModel(nil)
 
-	// Shift+Tab from Request wraps to History
-	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	// Go to Response tab first
+	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
+	m = newModel.(MainModel)
+
+	// Tab from Response tab should switch to History
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = newModel.(MainModel)
 	if m.activeTab != tabHistory {
-		t.Errorf("expected History tab after Shift+Tab from Request, got %d", m.activeTab)
+		t.Errorf("expected History tab after Tab from Response, got %d", m.activeTab)
+	}
+
+	// Tab from History wraps to Request
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newModel.(MainModel)
+	if m.activeTab != tabRequest {
+		t.Errorf("expected Request tab after Tab from History, got %d", m.activeTab)
+	}
+}
+
+func TestShiftTabSwitchesBackwardFromNonRequestTab(t *testing.T) {
+	m := NewMainModel(nil)
+
+	// Go to History tab
+	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
+	m = newModel.(MainModel)
+
+	// Shift+Tab from History goes to Response
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = newModel.(MainModel)
+	if m.activeTab != tabResponse {
+		t.Errorf("expected Response tab after Shift+Tab from History, got %d", m.activeTab)
+	}
+}
+
+func TestTabOnRequestTabNavigatesFormFields(t *testing.T) {
+	m := NewMainModel(nil)
+	// On Request tab, Tab should navigate form fields not switch tabs
+	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newModel.(MainModel)
+	if m.activeTab != tabRequest {
+		t.Errorf("expected to stay on Request tab when Tab navigates fields, got %d", m.activeTab)
 	}
 }
 
