@@ -14,7 +14,5 @@ func ExportPostman(c domain.Collection) ([]byte, error) {
 	return json.MarshalIndent(pc, "", "  ")
 }
 
-// We need to re-export the internal conversion function from the importer
-// package. Since the importer owns the Postman types, the exporter delegates
-// to it for the domain -> Postman struct conversion.
-var _ = domain.Collection{} // ensure domain import is used
+// Ensure domain import is used (ExportPostman signature references it).
+var _ domain.Collection
