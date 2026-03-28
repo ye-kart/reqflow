@@ -8,6 +8,7 @@ import (
 
 	"github.com/ye-kart/reqflow/internal/domain"
 	featurehttp "github.com/ye-kart/reqflow/internal/features/http"
+	"github.com/ye-kart/reqflow/internal/ports/driven"
 )
 
 // mockHTTPClient implements driven.HTTPClient for testing.
@@ -225,6 +226,161 @@ func TestBuildRequest_ReturnsRequestWithoutSending(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected Authorization header, got headers: %v", req.Headers)
+	}
+}
+
+// mockScriptEngine implements driven.ScriptEngine for testing.
+type mockScriptEngine struct {
+	executeFunc func(script string, ctx driven.ScriptContext) (driven.ScriptResult, error)
+}
+
+func (m *mockScriptEngine) Execute(script string, ctx driven.ScriptContext) (driven.ScriptResult, error) {
+	return m.executeFunc(script, ctx)
+}
+
+func TestExecute_PreRequestScriptModifiesRequest(t *testing.T) {
+	var capturedReq domain.HTTPRequest
+	httpMock := &mockHTTPClient{
+		doFunc: func(_ context.Context, req domain.HTTPRequest) (domain.HTTPResponse, error) {
+			capturedReq = req
+			return domain.HTTPResponse{StatusCode: 200}, nil
+		},
+	}
+
+	scriptMock := &mockScriptEngine{
+		executeFunc: func(script string, ctx driven.ScriptContext) (driven.ScriptResult, error) {
+			// Simulate pre-request script modifying the URL.
+			updated := ctx.Request
+			updated.URL = "https://modified.example.com/api"
+			return driven.ScriptResult{
+				UpdatedVariables: ctx.Variables,
+				UpdatedRequest:   &updated,
+			}, nil
+		},
+	}
+
+	executor := featurehttp.NewExecutor(httpMock, featurehttp.WithScriptEngine(scriptMock))
+	config := domain.RequestConfig{
+		Method:    domain.MethodGet,
+		URL:       "https://example.com/api",
+		PreScript: `pm.request.url = "https://modified.example.com/api";`,
+	}
+
+	_, err := executor.Execute(context.Background(), config, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if capturedReq.URL != "https://modified.example.com/api" {
+		t.Errorf("expected modified URL, got %s", capturedReq.URL)
+	}
+}
+
+func TestExecute_PostResponseScriptExtractsData(t *testing.T) {
+	httpMock := &mockHTTPClient{
+		doFunc: func(_ context.Context, _ domain.HTTPRequest) (domain.HTTPResponse, error) {
+			return domain.HTTPResponse{
+				StatusCode: 200,
+				Body:       []byte(`{"token":"abc123"}`),
+			}, nil
+		},
+	}
+
+	scriptMock := &mockScriptEngine{
+		executeFunc: func(script string, ctx driven.ScriptContext) (driven.ScriptResult, error) {
+			vars := make(map[string]string)
+			for k, v := range ctx.Variables {
+				vars[k] = v
+			}
+			vars["token"] = "abc123"
+			return driven.ScriptResult{
+				UpdatedVariables: vars,
+				Console:          []string{"extracted token"},
+			}, nil
+		},
+	}
+
+	executor := featurehttp.NewExecutor(httpMock, featurehttp.WithScriptEngine(scriptMock))
+	config := domain.RequestConfig{
+		Method:     domain.MethodGet,
+		URL:        "https://example.com/api",
+		PostScript: `pm.variables.set("token", pm.response.json().token);`,
+	}
+
+	result, err := executor.Execute(context.Background(), config, map[string]string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.ScriptConsole) != 1 || result.ScriptConsole[0] != "extracted token" {
+		t.Errorf("expected console [extracted token], got %v", result.ScriptConsole)
+	}
+}
+
+func TestExecute_TestResultsCaptured(t *testing.T) {
+	httpMock := &mockHTTPClient{
+		doFunc: func(_ context.Context, _ domain.HTTPRequest) (domain.HTTPResponse, error) {
+			return domain.HTTPResponse{StatusCode: 200}, nil
+		},
+	}
+
+	scriptMock := &mockScriptEngine{
+		executeFunc: func(script string, ctx driven.ScriptContext) (driven.ScriptResult, error) {
+			return driven.ScriptResult{
+				UpdatedVariables: ctx.Variables,
+				TestResults: []domain.TestResult{
+					{Name: "status is 200", Passed: true},
+					{Name: "body has data", Passed: false, Error: "missing data"},
+				},
+			}, nil
+		},
+	}
+
+	executor := featurehttp.NewExecutor(httpMock, featurehttp.WithScriptEngine(scriptMock))
+	config := domain.RequestConfig{
+		Method:     domain.MethodGet,
+		URL:        "https://example.com/api",
+		PostScript: `pm.test("status is 200", function() { pm.expect(pm.response.code).to.eql(200); });`,
+	}
+
+	result, err := executor.Execute(context.Background(), config, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.TestResults) != 2 {
+		t.Fatalf("expected 2 test results, got %d", len(result.TestResults))
+	}
+	if !result.TestResults[0].Passed {
+		t.Error("expected first test to pass")
+	}
+	if result.TestResults[1].Passed {
+		t.Error("expected second test to fail")
+	}
+}
+
+func TestExecute_NoScriptEngineSkipsScripts(t *testing.T) {
+	httpMock := &mockHTTPClient{
+		doFunc: func(_ context.Context, _ domain.HTTPRequest) (domain.HTTPResponse, error) {
+			return domain.HTTPResponse{StatusCode: 200}, nil
+		},
+	}
+
+	// No script engine provided.
+	executor := featurehttp.NewExecutor(httpMock)
+	config := domain.RequestConfig{
+		Method:     domain.MethodGet,
+		URL:        "https://example.com/api",
+		PreScript:  `pm.request.url = "modified";`,
+		PostScript: `pm.test("test", function() {});`,
+	}
+
+	result, err := executor.Execute(context.Background(), config, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Request.URL != "https://example.com/api" {
+		t.Errorf("expected original URL without script engine, got %s", result.Request.URL)
 	}
 }
 
