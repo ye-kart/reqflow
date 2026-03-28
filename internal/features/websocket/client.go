@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -114,4 +115,24 @@ func (c *Client) Close() error {
 
 	c.closed = true
 	return c.conn.Close()
+}
+
+// IsCloseError returns true if the error indicates a WebSocket close
+// (normal closure, going away, or unexpected EOF from server disconnect).
+func IsCloseError(err error) bool {
+	if gorillaWS.IsCloseError(err,
+		gorillaWS.CloseNormalClosure,
+		gorillaWS.CloseGoingAway,
+		gorillaWS.CloseNoStatusReceived,
+		gorillaWS.CloseAbnormalClosure,
+	) {
+		return true
+	}
+	// gorilla/websocket may also wrap unexpected EOF as a close error with
+	// code 1006; check for that pattern.
+	if gorillaWS.IsUnexpectedCloseError(err) {
+		return false
+	}
+	// If the error string contains "unexpected EOF" it's typically a server disconnect.
+	return strings.Contains(err.Error(), "unexpected EOF")
 }
